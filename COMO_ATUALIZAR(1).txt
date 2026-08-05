@@ -1,0 +1,18 @@
+PM LOCADORA ATUALIZADA
+
+1. Entre no painel do Netlify.
+2. Abra o projeto da PM Locadora.
+3. Vá em Deploys.
+4. Use a opção de upload manual.
+5. Envie o arquivo PM_Locadora_Atualizada.zip.
+6. Aguarde aparecer Published.
+7. Abra o site e pressione Ctrl + F5.
+8. No celular, feche e abra novamente. Se continuar a versão antiga, limpe o cache do navegador.
+
+Novidades:
+- Pagamento semanal
+- Primeiro vencimento
+- Parcelas automáticas a cada 7 dias
+- Botão Receber
+- Controle de pagamentos atrasados
+- Contrato semanal

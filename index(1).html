@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1f6feb">
+<link rel="manifest" href="manifest.json">
+<title>PM Locadora</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1f6feb;--danger:#dc2626;--ok:#15803d;--warn:#d97706;--border:#dbe3ef}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--primary);color:#fff;padding:18px;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:22px}
+header p{margin:5px 0 0;font-size:13px;opacity:.9}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:75px;z-index:9}
+nav button{border:0;background:#eaf2ff;color:#174ea6;padding:10px 13px;border-radius:10px;font-weight:bold;white-space:nowrap;cursor:pointer}
+nav button.active{background:var(--primary);color:#fff}
+main{max-width:1100px;margin:auto;padding:16px}
+section{display:none}
+section.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:14px}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--muted)}
+.big{font-size:26px;font-weight:bold}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+label{font-size:13px;font-weight:bold}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--border);border-radius:9px;margin-top:5px;background:#fff}
+textarea{min-height:85px}
+.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:bold;background:var(--primary);color:#fff}
+.btn.secondary{background:#475569}
+.btn.danger{background:var(--danger)}
+.btn.ok{background:var(--ok)}
+.btn.warn{background:var(--warn)}
+table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border-radius:10px;overflow:hidden}
+th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}
+th{background:#eef4fb}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:bold}
+.pago{background:#dcfce7;color:#166534}
+.pendente{background:#fef3c7;color:#92400e}
+.atrasado{background:#fee2e2;color:#991b1b}
+.receita{color:#15803d;font-weight:bold}
+.despesa{color:#dc2626;font-weight:bold}
+.empty{color:var(--muted);font-size:14px;padding:15px 0}
+#loginLayer{position:fixed;inset:0;background:linear-gradient(135deg,#1f6feb,#0f3d91);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.loginbox{background:#fff;width:min(420px,100%);border-radius:18px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.loginbox h2{margin:0 0 6px}
+.loginbox p{color:var(--muted);font-size:14px}
+#error{color:var(--danger);font-size:13px;margin-top:10px}
+.top-actions{position:absolute;right:16px;top:16px}
+#installBtn{display:none}
+@media(max-width:650px){
+  header{padding:14px 14px 55px}
+  nav{top:105px}
+  th:nth-child(n+5),td:nth-child(n+5){display:none}
+  .top-actions{top:62px;left:14px;right:auto}
+}
+@media print{
+  header,nav,.no-print,.top-actions,#loginLayer{display:none!important}
+  main{padding:0}
+  body{background:#fff}
+  #contratoPrint{display:block!important}
+}
+</style>
+</head>
+<body>
+
+<div id="loginLayer">
+  <div class="loginbox">
+    <h2 id="loginTitle">Acesso à PM Locadora</h2>
+    <p id="loginText">Entre com seu usuário e senha.</p>
+    <form id="loginForm">
+      <label>Usuário<input id="loginUser" required autocomplete="username"></label>
+      <label>Senha<input id="loginPass" required type="password" autocomplete="current-password"></label>
+      <button class="btn full" style="margin-top:10px">Entrar</button>
+    </form>
+    <div id="firstAccess" style="display:none">
+      <form id="createForm">
+        <label>Crie seu usuário<input id="createUser" required></label>
+        <label>Crie sua senha<input id="createPass" required type="password" minlength="4"></label>
+        <label>Confirme a senha<input id="confirmPass" required type="password" minlength="4"></label>
+        <button class="btn full" style="margin-top:10px">Criar acesso</button>
+      </form>
+    </div>
+    <div id="error"></div>
+  </div>
+</div>
+
+<header>
+  <h1>PM Locadora</h1>
+  <p>Controle de locações com pagamento semanal</p>
+  <div class="top-actions">
+    <button id="installBtn" class="btn ok">Instalar no celular</button>
+    <button class="btn secondary" onclick="logout()">Sair</button>
+  </div>
+</header>
+
+<nav id="menu">
+  <button data-tab="painel" class="active">Painel</button>
+  <button data-tab="veiculos">Veículos</button>
+  <button data-tab="clientes">Clientes</button>
+  <button data-tab="locacoes">Locações</button>
+  <button data-tab="pagamentos">Pagamentos</button>
+  <button data-tab="financeiro">Financeiro</button>
+  <button data-tab="manutencao">Manutenção</button>
+  <button data-tab="contratos">Contratos</button>
+</nav>
+
+<main>
+<section id="painel" class="active">
+  <div class="grid">
+    <div class="card"><h3>Veículos</h3><div class="big" id="pVeiculos">0</div></div>
+    <div class="card"><h3>Disponíveis</h3><div class="big" id="pDisponiveis">0</div></div>
+    <div class="card"><h3>Alugados</h3><div class="big" id="pAlugados">0</div></div>
+    <div class="card"><h3>Recebido nesta semana</h3><div class="big" id="pRecebidoSemana">R$ 0,00</div></div>
+    <div class="card"><h3>A receber</h3><div class="big" id="pReceber">R$ 0,00</div></div>
+    <div class="card"><h3>Pagamentos atrasados</h3><div class="big" id="pAtrasados">0</div></div>
+    <div class="card"><h3>Saldo</h3><div class="big" id="pSaldo">R$ 0,00</div></div>
+  </div>
+</section>
+
+<section id="veiculos">
+  <div class="card"><h2>Cadastrar veículo</h2>
+    <form id="formVeiculo">
+      <label>Placa<input required name="placa"></label>
+      <label>Modelo<input required name="modelo"></label>
+      <label>Ano<input name="ano" type="number"></label>
+      <label>Cor<input name="cor"></label>
+      <label>Quilometragem<input name="km" type="number" value="0"></label>
+      <label>Status<select name="status"><option>Disponível</option><option>Alugado</option><option>Manutenção</option></select></label>
+      <label class="full">Observações<textarea name="obs"></textarea></label>
+      <div class="actions full"><button class="btn">Salvar veículo</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Veículos cadastrados</h2><div id="listaVeiculos"></div></div>
+</section>
+
+<section id="clientes">
+  <div class="card"><h2>Cadastrar cliente</h2>
+    <form id="formCliente">
+      <label>Nome completo<input required name="nome"></label>
+      <label>CPF<input name="cpf"></label>
+      <label>CNH<input name="cnh"></label>
+      <label>Telefone<input name="telefone"></label>
+      <label>Endereço<input name="endereco"></label>
+      <label>Fiador<input name="fiador"></label>
+      <div class="actions full"><button class="btn">Salvar cliente</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Clientes cadastrados</h2><div id="listaClientes"></div></div>
+</section>
+
+<section id="locacoes">
+  <div class="card"><h2>Nova locação semanal</h2>
+    <form id="formLocacao">
+      <label>Cliente<select required name="clienteId" id="locCliente"></select></label>
+      <label>Veículo<select required name="veiculoId" id="locVeiculo"></select></label>
+      <label>Data da entrega<input required name="saida" type="date"></label>
+      <label>Primeiro vencimento<input required name="primeiroVencimento" type="date"></label>
+      <label>Valor semanal<input required name="valorSemanal" type="number" step="0.01"></label>
+      <label>Caução<input name="caucao" type="number" step="0.01" value="0"></label>
+      <label>KM de saída<input name="kmSaida" type="number" value="0"></label>
+      <label>Forma de pagamento<select name="pagamento"><option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão</option></select></label>
+      <label>Semanas iniciais<input name="semanas" type="number" min="1" max="52" value="4"></label>
+      <label class="full">Observações<textarea name="obs"></textarea></label>
+      <div class="actions full"><button class="btn">Registrar locação semanal</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Locações</h2><div id="listaLocacoes"></div></div>
+</section>
+
+<section id="pagamentos">
+  <div class="card"><h2>Pagamentos semanais</h2><div id="listaPagamentos"></div></div>
+</section>
+
+<section id="financeiro">
+  <div class="card"><h2>Novo lançamento</h2>
+    <form id="formFinanceiro">
+      <label>Tipo<select name="tipo"><option>Receita</option><option>Despesa</option></select></label>
+      <label>Descrição<input required name="descricao"></label>
+      <label>Valor<input required name="valor" type="number" step="0.01"></label>
+      <label>Vencimento<input required name="vencimento" type="date"></label>
+      <label>Status<select name="status"><option>Pendente</option><option>Pago</option></select></label>
+      <label>Veículo<select name="veiculoId" id="finVeiculo"><option value="">Nenhum</option></select></label>
+      <div class="actions full"><button class="btn">Salvar lançamento</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Contas</h2><div id="listaFinanceiro"></div></div>
+</section>
+
+<section id="manutencao">
+  <div class="card"><h2>Registrar manutenção</h2>
+    <form id="formManutencao">
+      <label>Veículo<select required name="veiculoId" id="manVeiculo"></select></label>
+      <label>Serviço<input required name="servico"></label>
+      <label>Data<input required name="data" type="date"></label>
+      <label>Valor<input name="valor" type="number" step="0.01" value="0"></label>
+      <label>KM atual<input name="km" type="number"></label>
+      <label>Próxima manutenção<input name="proxima" type="date"></label>
+      <label class="full">Observações<textarea name="obs"></textarea></label>
+      <div class="actions full"><button class="btn">Salvar manutenção</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Histórico de manutenção</h2><div id="listaManutencao"></div></div>
+</section>
+
+<section id="contratos">
+  <div class="card no-print"><h2>Gerar contrato semanal</h2>
+    <form>
+      <label>Selecione a locação<select id="contratoLocacao" required></select></label>
+      <label>Nome da locadora<input id="nomeLocadora" value="PM Participações e Intermediações LTDA"></label>
+      <label>CNPJ<input id="cnpjLocadora"></label>
+      <label>Endereço da locadora<input id="enderecoLocadora"></label>
+      <div class="actions full">
+        <button type="button" class="btn" onclick="gerarContrato()">Gerar contrato</button>
+        <button type="button" class="btn secondary" onclick="window.print()">Salvar ou imprimir PDF</button>
+      </div>
+    </form>
+  </div>
+  <div id="contratoPrint" class="card">
+    <h2>Contrato de Locação Semanal</h2>
+    <p>Selecione uma locação e clique em “Gerar contrato”.</p>
+  </div>
+</section>
+</main>
+
+<script>
+const KEY='minha_locadora_v2', AUTH='minha_locadora_auth';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"veiculos":[],"clientes":[],"locacoes":[],"financeiro":[],"manutencoes":[],"pagamentos":[]}');
+if(!db.pagamentos) db.pagamentos=[];
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+const id=()=>Date.now().toString()+Math.random().toString(16).slice(2);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const simpleHash=s=>btoa(unescape(encodeURIComponent(s))).split('').reverse().join('');
+const today=()=>new Date().toISOString().slice(0,10);
+const addDays=(date,days)=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
+const fmtDate=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'';
+
+function initAuth(){
+ const auth=localStorage.getItem(AUTH);
+ if(!auth){
+   loginForm.style.display='none';
+   firstAccess.style.display='block';
+   loginTitle.textContent='Primeiro acesso';
+   loginText.textContent='Crie seu usuário e sua senha.';
+ }else if(sessionStorage.getItem('logged')==='1'){
+   loginLayer.style.display='none';
+ }
+}
+createForm.onsubmit=e=>{
+ e.preventDefault();
+ if(createPass.value!==confirmPass.value){error.textContent='As senhas não conferem.';return}
+ localStorage.setItem(AUTH,JSON.stringify({user:createUser.value.trim(),pass:simpleHash(createPass.value)}));
+ sessionStorage.setItem('logged','1');
+ loginLayer.style.display='none';
+}
+loginForm.onsubmit=e=>{
+ e.preventDefault();
+ const a=JSON.parse(localStorage.getItem(AUTH)||'{}');
+ if(loginUser.value.trim()===a.user && simpleHash(loginPass.value)===a.pass){
+   sessionStorage.setItem('logged','1');
+   loginLayer.style.display='none';
+   error.textContent='';
+ }else error.textContent='Usuário ou senha incorretos.';
+}
+function logout(){sessionStorage.removeItem('logged');location.reload()}
+
+document.querySelectorAll('#menu button').forEach(btn=>btn.onclick=()=>{
+ document.querySelectorAll('#menu button').forEach(b=>b.classList.remove('active'));
+ document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
+ btn.classList.add('active');
+ document.getElementById(btn.dataset.tab).classList.add('active');
+});
+function formObj(form){return Object.fromEntries(new FormData(form).entries())}
+
+formVeiculo.onsubmit=e=>{e.preventDefault();let o=formObj(e.target);o.id=id();db.veiculos.push(o);e.target.reset();save()}
+formCliente.onsubmit=e=>{e.preventDefault();let o=formObj(e.target);o.id=id();db.clientes.push(o);e.target.reset();save()}
+formLocacao.onsubmit=e=>{
+ e.preventDefault();
+ let o=formObj(e.target);
+ o.id=id();o.status='Ativa';
+ db.locacoes.push(o);
+ const v=db.veiculos.find(x=>x.id===o.veiculoId);
+ if(v)v.status='Alugado';
+ const qtd=Math.max(1,Number(o.semanas||4));
+ for(let i=0;i<qtd;i++){
+   db.pagamentos.push({
+     id:id(),locacaoId:o.id,semana:i+1,
+     vencimento:addDays(o.primeiroVencimento,i*7),
+     valor:o.valorSemanal,status:'Pendente',dataPagamento:''
+   });
+ }
+ e.target.reset();save();
+}
+formFinanceiro.onsubmit=e=>{e.preventDefault();let o=formObj(e.target);o.id=id();db.financeiro.push(o);e.target.reset();save()}
+formManutencao.onsubmit=e=>{
+ e.preventDefault();let o=formObj(e.target);o.id=id();db.manutencoes.push(o);
+ if(Number(o.valor)>0)db.financeiro.push({id:id(),tipo:'Despesa',descricao:'Manutenção: '+o.servico,valor:o.valor,vencimento:o.data,status:'Pago',veiculoId:o.veiculoId});
+ e.target.reset();save();
+}
+
+function del(tipo,itemId){
+ if(confirm('Deseja excluir este registro?')){
+   db[tipo]=db[tipo].filter(x=>x.id!==itemId);
+   if(tipo==='locacoes')db.pagamentos=db.pagamentos.filter(x=>x.locacaoId!==itemId);
+   save();
+ }
+}
+function quitar(itemId){
+ const x=db.financeiro.find(x=>x.id===itemId);
+ if(x){x.status=x.status==='Pago'?'Pendente':'Pago';save()}
+}
+function statusPagamento(p){
+ if(p.status==='Pago')return 'Pago';
+ if(p.vencimento<today())return 'Atrasado';
+ return 'Pendente';
+}
+function receberPagamento(itemId){
+ const p=db.pagamentos.find(x=>x.id===itemId);
+ if(!p)return;
+ p.status='Pago';
+ p.dataPagamento=today();
+ const l=db.locacoes.find(x=>x.id===p.locacaoId);
+ db.financeiro.push({
+   id:id(),tipo:'Receita',descricao:'Pagamento semanal '+p.semana,
+   valor:p.valor,vencimento:p.vencimento,status:'Pago',veiculoId:l?.veiculoId||''
+ });
+ const lista=db.pagamentos.filter(x=>x.locacaoId===p.locacaoId).sort((a,b)=>a.semana-b.semana);
+ const ultima=lista[lista.length-1];
+ if(ultima && ultima.id===p.id){
+   db.pagamentos.push({
+     id:id(),locacaoId:p.locacaoId,semana:p.semana+1,
+     vencimento:addDays(p.vencimento,7),valor:p.valor,status:'Pendente',dataPagamento:''
+   });
+ }
+ save();
+}
+function devolver(itemId){
+ const l=db.locacoes.find(x=>x.id===itemId);
+ if(!l)return;
+ const km=prompt('Informe a quilometragem de retorno:','');
+ l.kmRetorno=km||'';l.status='Finalizada';l.dataRetorno=today();
+ const v=db.veiculos.find(x=>x.id===l.veiculoId);
+ if(v){v.status='Disponível';if(km)v.km=km}
+ save();
+}
+
+function renderAll(){
+ const vs=db.veiculos,cs=db.clientes,ls=db.locacoes,ps=db.pagamentos,fs=db.financeiro,ms=db.manutencoes;
+ pVeiculos.textContent=vs.length;
+ pDisponiveis.textContent=vs.filter(v=>v.status==='Disponível').length;
+ pAlugados.textContent=vs.filter(v=>v.status==='Alugado').length;
+ const inicioSemana=addDays(today(),-6);
+ pRecebidoSemana.textContent=money(ps.filter(p=>p.status==='Pago'&&p.dataPagamento>=inicioSemana).reduce((a,b)=>a+Number(b.valor||0),0));
+ pReceber.textContent=money(ps.filter(p=>p.status!=='Pago').reduce((a,b)=>a+Number(b.valor||0),0));
+ pAtrasados.textContent=ps.filter(p=>statusPagamento(p)==='Atrasado').length;
+ const entradas=fs.filter(x=>x.tipo==='Receita'&&x.status==='Pago').reduce((a,b)=>a+Number(b.valor||0),0);
+ const saidas=fs.filter(x=>x.tipo==='Despesa'&&x.status==='Pago').reduce((a,b)=>a+Number(b.valor||0),0);
+ pSaldo.textContent=money(entradas-saidas);
+
+ listaVeiculos.innerHTML=vs.length?`<table><tr><th>Placa</th><th>Modelo</th><th>Status</th><th>Ação</th></tr>${vs.map(v=>`<tr><td>${esc(v.placa)}</td><td>${esc(v.modelo)} ${esc(v.ano)}</td><td>${esc(v.status)}</td><td><button class="btn danger" onclick="del('veiculos','${v.id}')">Excluir</button></td></tr>`).join('')}</table>`:'<div class="empty">Nenhum veículo cadastrado.</div>';
+
+ listaClientes.innerHTML=cs.length?`<table><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ação</th></tr>${cs.map(c=>`<tr><td>${esc(c.nome)}</td><td>${esc(c.cpf)}</td><td>${esc(c.telefone)}</td><td><button class="btn danger" onclick="del('clientes','${c.id}')">Excluir</button></td></tr>`).join('')}</table>`:'<div class="empty">Nenhum cliente cadastrado.</div>';
+
+ listaLocacoes.innerHTML=ls.length?`<table><tr><th>Cliente</th><th>Veículo</th><th>Valor semanal</th><th>Status</th><th>Ação</th></tr>${ls.map(l=>{const c=cs.find(x=>x.id===l.clienteId),v=vs.find(x=>x.id===l.veiculoId);return `<tr><td>${esc(c?.nome)}</td><td>${esc(v?.modelo)} ${esc(v?.placa)}</td><td>${money(l.valorSemanal)}</td><td>${esc(l.status)}</td><td>${l.status==='Ativa'?`<button class="btn ok" onclick="devolver('${l.id}')">Receber veículo</button>`:''} <button class="btn danger" onclick="del('locacoes','${l.id}')">Excluir</button></td></tr>`}).join('')}</table>`:'<div class="empty">Nenhuma locação registrada.</div>';
+
+ const ordenados=[...ps].sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+ listaPagamentos.innerHTML=ordenados.length?`<table><tr><th>Cliente</th><th>Semana</th><th>Vencimento</th><th>Valor</th><th>Situação</th><th>Ação</th></tr>${ordenados.map(p=>{const l=ls.find(x=>x.id===p.locacaoId),c=cs.find(x=>x.id===l?.clienteId),s=statusPagamento(p);return `<tr><td>${esc(c?.nome)}</td><td>${p.semana}</td><td>${fmtDate(p.vencimento)}</td><td>${money(p.valor)}</td><td><span class="badge ${s.toLowerCase()}">${s}</span></td><td>${p.status!=='Pago'?`<button class="btn ok" onclick="receberPagamento('${p.id}')">Receber</button>`:`Pago em ${fmtDate(p.dataPagamento)}`}</td></tr>`}).join('')}</table>`:'<div class="empty">Nenhum pagamento semanal gerado.</div>';
+
+ listaFinanceiro.innerHTML=fs.length?`<table><tr><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>${fs.map(f=>`<tr><td>${esc(f.descricao)}</td><td class="${f.tipo==='Receita'?'receita':'despesa'}">${money(f.valor)}</td><td>${esc(f.status)}</td><td><button class="btn secondary" onclick="quitar('${f.id}')">${f.status==='Pago'?'Reabrir':'Marcar pago'}</button> <button class="btn danger" onclick="del('financeiro','${f.id}')">Excluir</button></td></tr>`).join('')}</table>`:'<div class="empty">Nenhum lançamento financeiro.</div>';
+
+ listaManutencao.innerHTML=ms.length?`<table><tr><th>Veículo</th><th>Serviço</th><th>Data</th><th>Valor</th></tr>${ms.map(m=>{const v=vs.find(x=>x.id===m.veiculoId);return `<tr><td>${esc(v?.modelo)} ${esc(v?.placa)}</td><td>${esc(m.servico)}</td><td>${fmtDate(m.data)}</td><td>${money(m.valor)}</td></tr>`}).join('')}</table>`:'<div class="empty">Nenhuma manutenção registrada.</div>';
+
+ const optsC='<option value="">Selecione</option>'+cs.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+ const optsV='<option value="">Selecione</option>'+vs.map(v=>`<option value="${v.id}">${esc(v.modelo)} - ${esc(v.placa)}</option>`).join('');
+ locCliente.innerHTML=optsC;
+ locVeiculo.innerHTML=optsV;
+ manVeiculo.innerHTML=optsV;
+ finVeiculo.innerHTML='<option value="">Nenhum</option>'+vs.map(v=>`<option value="${v.id}">${esc(v.modelo)} - ${esc(v.placa)}</option>`).join('');
+ contratoLocacao.innerHTML='<option value="">Selecione</option>'+ls.map(l=>{const c=cs.find(x=>x.id===l.clienteId),v=vs.find(x=>x.id===l.veiculoId);return `<option value="${l.id}">${esc(c?.nome)} - ${esc(v?.placa)}</option>`}).join('');
+}
+
+function gerarContrato(){
+ const l=db.locacoes.find(x=>x.id===contratoLocacao.value);
+ if(!l){alert('Selecione uma locação.');return}
+ const c=db.clientes.find(x=>x.id===l.clienteId);
+ const v=db.veiculos.find(x=>x.id===l.veiculoId);
+ contratoPrint.innerHTML=`
+ <h2 style="text-align:center">CONTRATO DE LOCAÇÃO SEMANAL DE VEÍCULO</h2>
+ <p><strong>LOCADORA:</strong> ${esc(nomeLocadora.value)}, CNPJ ${esc(cnpjLocadora.value||'não informado')}, com endereço em ${esc(enderecoLocadora.value||'não informado')}.</p>
+ <p><strong>LOCATÁRIO:</strong> ${esc(c?.nome)}, CPF ${esc(c?.cpf)}, CNH ${esc(c?.cnh)}, residente em ${esc(c?.endereco)}.</p>
+ <p><strong>VEÍCULO:</strong> ${esc(v?.modelo)}, ano ${esc(v?.ano)}, cor ${esc(v?.cor)}, placa ${esc(v?.placa)}.</p>
+ <p><strong>INÍCIO DA LOCAÇÃO:</strong> ${fmtDate(l.saida)}.</p>
+ <p><strong>VALOR SEMANAL:</strong> ${money(l.valorSemanal)}.</p>
+ <p><strong>PRIMEIRO VENCIMENTO:</strong> ${fmtDate(l.primeiroVencimento)}.</p>
+ <p><strong>FORMA DE PAGAMENTO:</strong> ${esc(l.pagamento)}. Caução: ${money(l.caucao)}.</p>
+ <p>O pagamento da locação será realizado semanalmente, a cada 7 dias, sempre no mesmo dia da semana contado a partir do primeiro vencimento informado neste contrato.</p>
+ <p>Em caso de atraso, a locadora poderá cobrar os valores vencidos e solicitar a devolução imediata do veículo.</p>
+ <p>O locatário se responsabiliza por multas, avarias, combustível, despesas de uso, franquia do seguro e danos causados durante a locação.</p>
+ <p>É proibida a sublocação, cessão ou entrega do veículo a terceiros não autorizados pela locadora.</p>
+ <p>O veículo deverá ser devolvido nas mesmas condições em que foi entregue, ressalvado o desgaste natural de uso.</p>
+ <p><strong>QUILOMETRAGEM DE SAÍDA:</strong> ${esc(l.kmSaida)} km.</p>
+ <p><strong>OBSERVAÇÕES:</strong> ${esc(l.obs||'Nenhuma')}</p>
+ <br><br>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:50px;text-align:center">
+   <div>_________________________________<br>LOCADORA</div>
+   <div>_________________________________<br>LOCATÁRIO</div>
+ </div>
+ <br><br>
+ <div style="text-align:center">_________________________________<br>FIADOR: ${esc(c?.fiador||'Não informado')}</div>`;
+}
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.style.display='inline-block'});
+installBtn.onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'}
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
+initAuth();renderAll();
+</script>
+</body>
+</html>
